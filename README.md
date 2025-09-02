@@ -49,6 +49,7 @@ pip install -r requirements.txt
 ```bash
 # OpenAI API密钥
 export OPENAI_API_KEY="your-openai-api-key"
+export OPENAI_BASE_URL="base-url"
 
 ```
 
@@ -84,25 +85,23 @@ python main.py --parallel 4 batch --dir data/ --type both
 
 | ID | 输入 | 期望输出 | 期望提取路径 | 实际提取路径 |
 |---|---|---|---|---|
-| llm_001 | 请用一句话总结人工智能的定义 | 人工智能是让机器模拟人类智能行为的技术 | $ | $ |
-| llm_002 | 解释什么是机器学习 | 机器学习是让计算机通过数据自动学习和改进的方法 | $ | $ |
-| llm_003 | 生成用户信息JSON | {"name": "张三"} | $.choices[0].message.content.$.name | $.choices[0].message.content.$ |
+| llm_001 | 请用一句话总结人工智能的定义 | 人工智能是让机器模拟人类智能行为的技术 | `$` | `$` |
+| llm_002 | 解释什么是机器学习 | 机器学习是让计算机通过数据自动学习和改进的方法 | `$` | `$` |
+| llm_003 | 生成用户信息JSON | {"name": "张三"} | `$.name` | `$.name` |
 
 **提取路径说明**:
 - `$`: 使用完整内容进行比较
-- `$.choices[0].message.content.$`: 从LLM响应中提取嵌套的JSON内容
-- `$.choices[0].message.content.$.name`: 进一步提取JSON中的特定字段
+- `$.name`: 从LLM响应中提取JSON内容中的name字段
 
 ### HTTP测试Excel格式
 
 | ID | 方法 | 端点 | 请求头 | 请求体 | 期望响应 | 期望状态码 | 期望提取路径 | 实际提取路径 |
 |---|---|---|---|---|---|---|---|---|
-| http_001 | GET | https://api.example.com/users | {"Accept": "application/json"} | | name | 200 | $.data[0].name | $.data[0].name |
-| http_002 | POST | https://api.example.com/users | {"Content-Type": "application/json"} | {"name": "test"} | id | 201 | $.id | $.id |
+| http_001 | GET | https://api.example.com/users | {"Accept": "application/json"} | | {"data":[{"name":"张三"}]} | 200 | `$.data[0].name` | `$.data[0].name` |
+| http_002 | POST | https://api.example.com/users | {"Content-Type": "application/json"} | {"name": "test"} | {"id":123,"status":"success"} | 201 | `$.id` | `$.id` |
 
 **HTTP提取路径示例**:
 - `$.data[0].name`: 提取响应JSON中第一个数据项的name字段
-- `$.result.user.email`: 提取嵌套JSON中的用户邮箱
 - `$`: 使用完整响应内容进行比较
 
 ## 配置说明
