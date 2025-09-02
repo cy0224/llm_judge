@@ -1,0 +1,26 @@
+# Core dependencies
+pandas>=2.0.0
+openpyxl>=3.1.0
+requests>=2.31.0
+
+# LLM integration
+openai>=1.0.0
+
+
+# Testing and validation
+pytest>=7.4.0
+pytest-html>=3.2.0
+jsonschema>=4.17.0
+
+# Utilities
+pyyaml>=6.0
+colorama>=0.4.6
+tqdm>=4.65.0
+click>=8.1.0
+
+# Logging and monitoring
+loguru>=0.7.0
+
+# Optional: for advanced text comparison
+fuzzywuzzy>=0.18.0
+python-levenshtein>=0.21.0

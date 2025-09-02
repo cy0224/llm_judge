@@ -1,0 +1,138 @@
+# LLM和HTTP测试配置文件
+
+# LLM配置
+llm:
+  # OpenAI配置
+  openai:
+    api_key: "${OPENAI_API_KEY}"  # 从环境变量读取
+    base_url: "${OPENAI_BASE_URL}"
+    default_model: "ep-20250214150754-5ndjk"
+    max_tokens: 1000
+    temperature: 0.1
+    timeout: 60
+    max_retries: 3
+    retry_delay: 1
+  
+
+
+# HTTP测试配置
+http:
+  timeout: 30
+  max_retries: 3
+  retry_delay: 1
+  verify_ssl: true
+  follow_redirects: true
+  headers:
+    User-Agent: "LLM-Judge-Tester/1.0"
+    Accept: "application/json"
+    Content-Type: "application/json"
+
+# 测试配置
+test:
+  # 数据目录
+  data_dir: "data"
+  
+  # 输出目录
+  output_dir: "output"
+  
+  # 报告格式
+  report_formats:
+    - "html"
+    - "json"
+    - "excel"  # 需要安装pandas和openpyxl
+  
+  # 比较配置
+  comparison:
+    default_type: "fuzzy"  # exact, fuzzy, contains, json
+    case_sensitive: false
+    ignore_whitespace: true
+  
+  # 并行配置
+  parallel:
+    max_workers: 4
+    chunk_size: 10
+  
+  # Excel配置
+  excel:
+    # LLM测试列映射
+    llm_columns:
+      id: "ID"          # 测试用例ID列
+      input: "输入"      # 输入列
+      expected: "期望输出" # 期望输出列
+      expected_extract_path: "期望提取路径"  # 期望结果JSON提取路径列(可选)
+      actual_extract_path: "实际提取路径"    # 实际结果JSON提取路径列(可选)
+    
+    # HTTP测试列映射
+    http_columns:
+      id: "ID"              # 测试用例ID列
+      method: "方法"         # HTTP方法列
+      endpoint: "端点"       # 端点URL列
+      headers: "请求头"      # 请求头列(JSON格式)
+      expected_extract_path: "期望提取路径"  # 期望结果JSON提取路径列(可选)
+      actual_extract_path: "实际提取路径"    # 实际结果JSON提取路径列(可选)
+      body: "请求体"         # 请求体列
+      expected: "期望响应"    # 期望响应列
+      expected_status: "期望状态码"  # 期望状态码列
+    
+    # 工作表名称
+    sheet_names:
+      - "Sheet1"
+      - "测试数据"
+      - "test_data"
+
+# 日志配置
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}"
+  
+  # 文件日志
+  file:
+    enabled: true
+    path: "logs/test_{time:YYYY-MM-DD}.log"
+    rotation: "1 day"
+    retention: "7 days"
+  
+  # 控制台日志
+  console:
+    enabled: true
+    colorize: true
+
+# 环境配置
+environment:
+  # 开发环境
+  development:
+    debug: true
+    log_level: "DEBUG"
+  
+  # 生产环境
+  production:
+    debug: false
+    log_level: "INFO"
+
+# 扩展配置
+extensions:
+  # 自定义比较器
+  custom_comparators: []
+  
+  # 自定义报告生成器
+  custom_reporters: []
+  
+  # 插件目录
+  plugin_dirs: []
+  
+  # JSON内容提取配置
+  json_extraction:
+    # 是否启用JSON提取功能
+    enabled: true
+    
+    # 默认提取路径（$ 表示不提取，"" 表示不提取）
+    default_extract_path: "$"
+    
+    # 提取失败时的处理方式
+    # "ignore" - 忽略提取失败，使用原始内容
+    # "error" - 提取失败时报错
+    # "empty" - 提取失败时返回空字符串
+    extraction_failure_mode: "ignore"
+    
+    # 是否在提取失败时记录警告日志
+    log_extraction_failures: true
