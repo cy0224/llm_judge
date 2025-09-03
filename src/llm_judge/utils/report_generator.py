@@ -526,11 +526,24 @@ class ReportGenerator:
                 actual_path = "$"
             extracted_actual = f'<div class="detail-section"><div class="detail-label">提取后的实际输出 (路径: {self._escape_html(actual_path)}):</div>{self._create_textarea_with_modal(str(comparison.details["extracted_actual"]), f"提取后的实际输出 (路径: {actual_path})")}</div>'
         
+        # 构建LLM推理过程显示
+        reasoning_content = ""
+        if comparison.comparison_type.value == "llm" and comparison.details and 'llm_reasoning' in comparison.details:
+            reasoning = comparison.details['llm_reasoning']
+            if reasoning:
+                reasoning_content = f'<div class="detail-section"><div class="detail-label">LLM推理过程:</div>{self._create_textarea_with_modal(reasoning, "LLM推理过程")}</div>'
+        
         # 构建错误信息显示
         error_content = ""
         if llm_response.error or comparison.error_message:
             error_msg = llm_response.error or comparison.error_message
             error_content = f'<div class="detail-section"><div class="detail-label">错误信息:</div><div class="error-message">{self._escape_html(error_msg)}</div></div>'
+        
+        # 构建阈值信息显示（所有比较类型都显示）
+        threshold_content = ""
+        if comparison.details and 'threshold' in comparison.details:
+            threshold = comparison.details['threshold']
+            threshold_content = f'<div class="detail-section"><div class="detail-label">比较阈值:</div><p><strong>阈值:</strong> {threshold:.3f}</p></div>'
         
         details_content = f"""
         <div style="display: none;" id="{details_id}">
@@ -539,6 +552,7 @@ class ReportGenerator:
                 <p><strong>模型:</strong> {llm_response.model}</p>
                 <p><strong>响应时间:</strong> {llm_response.response_time:.3f}s</p>
             </div>
+            {threshold_content}
             <div class="detail-section">
                 <div class="detail-label">输入:</div>
                 {self._create_textarea_with_modal(test_case.input, "输入内容")}
@@ -553,6 +567,7 @@ class ReportGenerator:
             </div>
             {extracted_expected}
             {extracted_actual}
+            {reasoning_content}
             {error_content}
             {f'<div class="detail-section"><div class="detail-label">差异对比:</div><div class="diff-content">{self._format_diff_content(comparison.diff)}</div></div>' if comparison.diff else ''}
         </div>
@@ -601,11 +616,24 @@ class ReportGenerator:
                 actual_path = "$"
             extracted_actual = f'<div class="detail-section"><div class="detail-label">提取后的实际响应 (路径: {self._escape_html(actual_path)}):</div>{self._create_textarea_with_modal(str(comparison.details["extracted_actual"]), f"提取后的实际响应 (路径: {actual_path})")}</div>'
         
+        # 构建LLM推理过程显示
+        reasoning_content = ""
+        if comparison.comparison_type.value == "llm" and comparison.details and 'llm_reasoning' in comparison.details:
+            reasoning = comparison.details['llm_reasoning']
+            if reasoning:
+                reasoning_content = f'<div class="detail-section"><div class="detail-label">LLM推理过程:</div>{self._create_textarea_with_modal(reasoning, "LLM推理过程")}</div>'
+        
         # 构建错误信息显示
         error_content = ""
         if http_response.error or comparison.error_message:
             error_msg = http_response.error or comparison.error_message
             error_content = f'<div class="detail-section"><div class="detail-label">错误信息:</div><div class="error-message">{self._escape_html(error_msg)}</div></div>'
+        
+        # 构建阈值信息显示（所有比较类型都显示）
+        threshold_content = ""
+        if comparison.details and 'threshold' in comparison.details:
+            threshold = comparison.details['threshold']
+            threshold_content = f'<div class="detail-section"><div class="detail-label">比较阈值:</div><p><strong>阈值:</strong> {threshold:.3f}</p></div>'
         
         # 检查状态码是否匹配
         status_code_match = result.status_code_match if hasattr(result, 'status_code_match') else True
@@ -620,6 +648,7 @@ class ReportGenerator:
                 <p><strong>状态码:</strong> <span class="{status_code_class}">{http_response.status_code}</span> (期望: {expected_status})</p>
                 <p><strong>响应时间:</strong> {http_response.response_time:.3f}s</p>
             </div>
+            {threshold_content}
             <div class="detail-section">
                 <div class="detail-label">期望响应:</div>
                 {self._create_textarea_with_modal(test_case.expected, "期望响应内容")}
@@ -630,6 +659,7 @@ class ReportGenerator:
             </div>
             {extracted_expected}
             {extracted_actual}
+            {reasoning_content}
             {error_content}
             {f'<div class="detail-section"><div class="detail-label">差异对比:</div><div class="diff-content">{self._format_diff_content(comparison.diff)}</div></div>' if comparison.diff else ''}
         </div>
@@ -786,6 +816,16 @@ class ReportGenerator:
                     expected_extract_path = str(result.comparison_result.details.get('expected_extract_path', '$'))
                     actual_extract_path = str(result.comparison_result.details.get('actual_extract_path', '$'))
                 
+                # 获取阈值信息（所有比较类型）
+                threshold = ""
+                if result.comparison_result.details:
+                    threshold = str(result.comparison_result.details.get('threshold', ''))
+                
+                # 获取推理信息（仅LLM类型）
+                reasoning = ""
+                if result.comparison_result.comparison_type.value == "llm" and result.comparison_result.details:
+                    reasoning = str(result.comparison_result.details.get('llm_reasoning', ''))
+                
                 row = {
                     '测试ID': result.test_case.id,
                     '输入': result.test_case.input,
@@ -799,6 +839,8 @@ class ReportGenerator:
                     '对比类型': result.comparison_result.comparison_type.value,
                     '是否匹配': '是' if result.comparison_result.is_match else '否',
                     '相似度': f"{result.comparison_result.similarity_score:.3f}",
+                    '比较阈值': threshold,
+                    'LLM推理过程': reasoning,
                     '执行时间(s)': f"{result.execution_time:.3f}",
                     'LLM响应时间(s)': f"{result.llm_response.response_time:.3f}" if result.llm_response.response_time else '',
                     '错误信息': result.llm_response.error or result.comparison_result.error_message or '',
@@ -816,6 +858,16 @@ class ReportGenerator:
                     expected_extract_path = str(result.comparison_result.details.get('expected_extract_path', '$'))
                     actual_extract_path = str(result.comparison_result.details.get('actual_extract_path', '$'))
                 
+                # 获取阈值信息（所有比较类型）
+                threshold = ""
+                if result.comparison_result.details:
+                    threshold = str(result.comparison_result.details.get('threshold', ''))
+                
+                # 获取推理信息（仅LLM类型）
+                reasoning = ""
+                if result.comparison_result.comparison_type.value == "llm" and result.comparison_result.details:
+                    reasoning = str(result.comparison_result.details.get('llm_reasoning', ''))
+                
                 row = {
                     '测试ID': result.test_case.id,
                     '请求方法': result.test_case.method,
@@ -832,6 +884,8 @@ class ReportGenerator:
                     '对比类型': result.comparison_result.comparison_type.value,
                     '内容匹配': '是' if result.comparison_result.is_match else '否',
                     '相似度': f"{result.comparison_result.similarity_score:.3f}",
+                    '比较阈值': threshold,
+                    'LLM推理过程': reasoning,
                     '执行时间(s)': f"{result.execution_time:.3f}",
                     '响应时间(s)': f"{result.http_response.response_time:.3f}",
                     '错误信息': result.http_response.error or result.comparison_result.error_message or '',

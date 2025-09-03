@@ -100,7 +100,18 @@ def run_llm_test(excel_file: str,
         
         # 将字符串转换为ComparisonType枚举
         comparison_enum = ComparisonType[comparison_type.upper()]
-        text_comparator = TextComparator(fuzzy_threshold=threshold)
+        
+        # 创建文本比较器
+        if comparison_enum == ComparisonType.LLM:
+            # 使用专门的比较LLM配置
+            text_comparator = TextComparator.create_with_comparison_llm(
+                fuzzy_threshold=threshold
+            )
+        else:
+            # 使用普通比较器
+            text_comparator = TextComparator(
+                fuzzy_threshold=threshold
+            )
         comparator = BatchComparator(comparator=text_comparator)
         
         tester = LLMTester(
@@ -206,7 +217,17 @@ def run_http_test(excel_file: str,
         
         # 将字符串转换为ComparisonType枚举
         comparison_enum = ComparisonType[comparison_type.upper()]
-        text_comparator = TextComparator(fuzzy_threshold=threshold)
+        
+        # 创建文本比较器
+        if comparison_enum == ComparisonType.LLM:
+            # 使用专门的比较LLM配置
+            text_comparator = TextComparator.create_with_comparison_llm(
+                fuzzy_threshold=threshold
+            )
+        else:
+            # 使用普通比较器
+            text_comparator = TextComparator(fuzzy_threshold=threshold)
+        
         comparator = BatchComparator(comparator=text_comparator)
         
         # 创建测试器
@@ -356,7 +377,7 @@ def main():
                        default='INFO', help='日志级别')
     parser.add_argument('--output-dir', default='output', help='输出目录')
     parser.add_argument('--parallel', type=int, default=1, help='并行数量')
-    parser.add_argument('--comparison-type', choices=['exact', 'fuzzy', 'contains', 'json'],
+    parser.add_argument('--comparison-type', choices=['exact', 'fuzzy', 'contains', 'json', 'llm'],
                        default='fuzzy', help='比较类型')
     parser.add_argument('--threshold', type=float, default=0.8, help='相似度阈值')
     

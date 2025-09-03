@@ -43,9 +43,27 @@ test:
   
   # 比较配置
   comparison:
-    default_type: "fuzzy"  # exact, fuzzy, contains, json
+    default_type: "fuzzy"  # exact, fuzzy, contains, json, llm
     case_sensitive: false
     ignore_whitespace: true
+    
+    # LLM比较专用配置
+    llm:
+      # 使用的LLM提供商 (openai, 可扩展其他)
+      provider: "openai"
+      
+      # OpenAI配置 (用于LLM比较)
+      openai:
+        api_key: "${OPENAI_API_KEY}"  # 从环境变量读取
+        base_url: "${OPENAI_BASE_URL}"
+        model: "ep-20250214150754-5ndjk"  # 专门用于比较的模型
+        max_tokens: 500  # 比较任务通常不需要太多token
+        temperature: 0.0  # 比较任务需要更确定性的结果
+        timeout: 30
+        max_retries: 2
+        retry_delay: 1
+      
+
   
   # 并行配置
   parallel:

@@ -8,7 +8,6 @@ from tqdm import tqdm
 from loguru import logger
 
 from .llm_client import BaseLLMClient, LLMResponse
-from ..utils.comparator import BatchComparator, ComparisonResult, ComparisonType
 
 
 @dataclass
@@ -26,7 +25,7 @@ class TestResult:
     """测试结果"""
     test_case: TestCase
     llm_response: LLMResponse
-    comparison_result: ComparisonResult
+    comparison_result: Any  # ComparisonResult - 避免循环导入
     execution_time: float
     timestamp: str
 
@@ -36,18 +35,22 @@ class LLMTester:
     
     def __init__(self, 
                  llm_client: BaseLLMClient,
-                 comparator: BatchComparator = None,
+                 comparator = None,
                  max_workers: int = 5,
                  progress_bar: bool = True):
         self.llm_client = llm_client
-        self.comparator = comparator or BatchComparator()
+        if comparator is None:
+            from ..utils.comparator import BatchComparator
+            self.comparator = BatchComparator()
+        else:
+            self.comparator = comparator
         self.max_workers = max_workers
         self.progress_bar = progress_bar
         self.test_results: List[TestResult] = []
     
     def run_single_test(self, 
                        test_case: TestCase,
-                       comparison_type: ComparisonType = ComparisonType.EXACT,
+                       comparison_type = None,
                        **llm_kwargs) -> TestResult:
         """运行单个测试用例
         
@@ -59,6 +62,11 @@ class LLMTester:
         Returns:
             TestResult: 测试结果
         """
+        # 延迟导入避免循环导入
+        if comparison_type is None:
+            from ..utils.comparator import ComparisonType
+            comparison_type = ComparisonType.EXACT
+        
         start_time = time.time()
         timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
         
@@ -129,7 +137,7 @@ class LLMTester:
     
     def run_batch_tests(self, 
                        test_cases: List[TestCase],
-                       comparison_type: ComparisonType = ComparisonType.EXACT,
+                       comparison_type = None,
                        parallel: bool = True,
                        **llm_kwargs) -> List[TestResult]:
         """批量运行测试用例
@@ -143,6 +151,11 @@ class LLMTester:
         Returns:
             List[TestResult]: 测试结果列表
         """
+        # 延迟导入避免循环导入
+        if comparison_type is None:
+            from ..utils.comparator import ComparisonType
+            comparison_type = ComparisonType.EXACT
+        
         logger.info(f"开始执行 {len(test_cases)} 个测试用例")
         
         if parallel and self.max_workers > 1:
@@ -152,7 +165,7 @@ class LLMTester:
     
     def _run_sequential_tests(self, 
                              test_cases: List[TestCase],
-                             comparison_type: ComparisonType,
+                             comparison_type,
                              **llm_kwargs) -> List[TestResult]:
         """顺序执行测试"""
         results = []
@@ -174,7 +187,7 @@ class LLMTester:
     
     def _run_parallel_tests(self, 
                            test_cases: List[TestCase],
-                           comparison_type: ComparisonType,
+                           comparison_type,
                            **llm_kwargs) -> List[TestResult]:
         """并行执行测试"""
         results = []

@@ -7,7 +7,7 @@
 - 🤖 **LLM测试**: 支持OpenAI等主流LLM提供商
 - 🌐 **HTTP测试**: 支持各种HTTP方法和接口测试
 - 📊 **Excel数据源**: 使用Excel文件管理测试用例
-- 📈 **多种比较方式**: 精确匹配、模糊匹配、包含匹配、JSON匹配
+- 📈 **多种比较方式**: 精确匹配、模糊匹配、包含匹配、JSON匹配、LLM语义匹配
 - 🔍 **JSON内容提取**: 支持JSONPath表达式提取嵌套JSON内容进行比较
 - 📋 **丰富报告**: 生成HTML、JSON、Excel格式的测试报告
 - ⚡ **并行执行**: 支持多线程并行测试提高效率
@@ -63,6 +63,9 @@ python main.py llm --file data/llm_test_example.xlsx --provider openai --model g
 
 # 使用不同的比较方式
 python main.py --comparison-type fuzzy --threshold 0.8 llm --file data/llm_test_example.xlsx
+
+# 使用LLM语义比较（推荐用于语义相似性评估）
+python main.py --comparison-type llm --threshold 0.8 llm --file data/llm_test_example.xlsx
 ```
 
 #### HTTP测试
@@ -175,13 +178,59 @@ test:
 
 详细使用说明请参考 [JSON_EXTRACTION_USAGE.md](JSON_EXTRACTION_USAGE.md)
 
+## 比较方式说明
+
+### 1. 精确匹配 (exact)
+- **功能**: 进行完全一致的文本匹配
+- **适用场景**: 需要严格一致性验证的场合
+- **示例**: `python main.py --comparison-type exact`
+
+### 2. 模糊匹配 (fuzzy)
+- **功能**: 基于相似度的文本匹配，使用多种算法计算文本相似度
+- **阈值**: 默认0.8，可通过`--threshold`参数调整
+- **适用场景**: 允许一定差异的文本比较
+- **示例**: `python main.py --comparison-type fuzzy --threshold 0.8`
+
+### 3. 包含匹配 (contains)
+- **功能**: 检查期望文本是否包含在实际文本中
+- **适用场景**: 验证关键信息是否出现在输出中
+- **示例**: `python main.py --comparison-type contains`
+
+### 4. JSON结构匹配 (json)
+- **功能**: 比较JSON数据结构的一致性
+- **特性**: 支持从Markdown代码块中提取JSON内容
+- **适用场景**: API响应、配置文件等结构化数据的验证
+- **示例**: `python main.py --comparison-type json`
+
+### 5. LLM语义匹配 (llm) 🆕
+- **功能**: 使用大语言模型进行语义相似度评估
+- **特性**: 
+  - 理解文本的语义含义，而非仅仅字面匹配
+  - 提供详细的评估理由和分数
+  - 支持0-100分的细粒度评分
+- **评估标准**:
+  - 90-100分：语义完全一致或高度相似
+  - 70-89分：语义基本一致，有轻微差异
+  - 50-69分：语义部分相似，有明显差异
+  - 30-49分：语义有一定关联，但差异较大
+  - 0-29分：语义不相关或完全不同
+- **适用场景**: 
+  - 自然语言生成结果的语义评估
+  - 翻译质量评估
+  - 文本摘要准确性验证
+  - 问答系统回答质量评估
+- **示例**: `python main.py --comparison-type llm --threshold 0.8`
+- **注意**: 需要配置LLM API密钥，会产生API调用费用
+
 ## 报告格式
 
 测试完成后会在 `output/` 目录生成以下报告：
 
 - **HTML报告**: 可视化的测试结果，包含详细的对比信息
+  - LLM测试：显示输入、期望输出、实际输出、比较结果、LLM推理过程和比较阈值
+  - HTTP测试：显示请求信息、响应内容、比较结果，当使用LLM比较时也会显示推理过程和阈值
 - **JSON报告**: 机器可读的结构化数据
-- **Excel报告**: 表格形式的测试结果（需要安装pandas和openpyxl）
+- **Excel报告**: 表格形式的测试结果，包含所有测试详情和比较信息（需要安装pandas和openpyxl）
 
 ## 命令行参数
 
@@ -190,7 +239,7 @@ test:
 - `--log-level`: 日志级别 (DEBUG, INFO, WARNING, ERROR)
 - `--output-dir`: 输出目录
 - `--parallel`: 并行数量
-- `--comparison-type`: 比较类型
+- `--comparison-type`: 比较类型 (exact, fuzzy, contains, json, llm)
 - `--threshold`: 相似度阈值
 
 ### LLM测试参数
@@ -305,6 +354,13 @@ MIT License
 欢迎提交Issue和Pull Request来改进这个项目！
 
 ## 更新日志
+
+### v1.2.0
+- 🔧 修复HTTP测试中LLM比较功能的配置问题
+- 📊 增强HTTP报告功能，支持显示LLM比较的阈值和推理过程
+- 📋 统一LLM和HTTP报告格式，提供一致的信息展示
+- 🐛 修复HTTP测试在使用LLM比较类型时的"LLM客户端未配置"错误
+- 📚 更新文档，完善报告格式说明
 
 ### v1.1.0
 - ✨ 新增JSON内容提取功能，支持JSONPath表达式

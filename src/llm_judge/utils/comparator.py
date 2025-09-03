@@ -9,6 +9,8 @@ from fuzzywuzzy import fuzz
 from loguru import logger
 
 from .json_extractor import JSONExtractor
+from ..llm_test.llm_client import BaseLLMClient, LLMClientFactory
+from ..config import config
 
 
 class ComparisonType(Enum):
@@ -17,6 +19,7 @@ class ComparisonType(Enum):
     FUZZY = "fuzzy"  # 模糊匹配
     CONTAINS = "contains"  # 包含匹配
     JSON = "json"  # JSON结构匹配
+    LLM = "llm"  # LLM语义匹配
     CUSTOM = "custom"  # 自定义匹配
 
 
@@ -40,11 +43,61 @@ class TextComparator:
                  fuzzy_threshold: float = 0.8,
                  ignore_case: bool = True,
                  ignore_whitespace: bool = True,
-                 json_extractor: JSONExtractor = None):
+                 json_extractor: JSONExtractor = None,
+                 llm_client: BaseLLMClient = None):
         self.fuzzy_threshold = fuzzy_threshold
         self.ignore_case = ignore_case
         self.ignore_whitespace = ignore_whitespace
         self.json_extractor = json_extractor or JSONExtractor()
+        self.llm_client = llm_client
+    
+    @classmethod
+    def create_with_comparison_llm(cls, 
+                                   fuzzy_threshold: float = None,
+                                   ignore_case: bool = True,
+                                   ignore_whitespace: bool = True,
+                                   json_extractor: JSONExtractor = None) -> 'TextComparator':
+        """创建带有专门比较LLM客户端的文本比较器"""
+        import os
+        
+        # 从配置中获取比较LLM的配置
+        provider = config.get('test.comparison.llm.provider', 'openai')
+        
+        # 获取API密钥
+        api_key = config.get(f'test.comparison.llm.{provider}.api_key')
+        if not api_key:
+            api_key = os.getenv(f'{provider.upper()}_API_KEY')
+        
+        if not api_key:
+            logger.warning(f"未找到{provider.upper()}_API_KEY，LLM比较功能将不可用")
+            return cls(
+                fuzzy_threshold=fuzzy_threshold or 0.8,
+                ignore_case=ignore_case,
+                ignore_whitespace=ignore_whitespace,
+                json_extractor=json_extractor,
+                llm_client=None
+            )
+        
+        # 创建专门用于比较的LLM客户端
+        llm_client = LLMClientFactory.create_client(
+            provider=provider,
+            api_key=api_key,
+            model=config.get(f'test.comparison.llm.{provider}.model'),
+            temperature=config.get(f'test.comparison.llm.{provider}.temperature', 0.0),
+            max_tokens=config.get(f'test.comparison.llm.{provider}.max_tokens', 500),
+            base_url=config.get(f'test.comparison.llm.{provider}.base_url'),
+            timeout=config.get(f'test.comparison.llm.{provider}.timeout', 30),
+            max_retries=config.get(f'test.comparison.llm.{provider}.max_retries', 2),
+            retry_delay=config.get(f'test.comparison.llm.{provider}.retry_delay', 1)
+        )
+        
+        return cls(
+            fuzzy_threshold=fuzzy_threshold or 0.8,
+            ignore_case=ignore_case,
+            ignore_whitespace=ignore_whitespace,
+            json_extractor=json_extractor,
+            llm_client=llm_client
+        )
     
     def _normalize_text(self, text: str) -> str:
         """标准化文本"""
@@ -203,6 +256,106 @@ class TextComparator:
                 error_message=f"JSON解析错误: {e}"
             )
     
+    def llm_match(self, expected: str, actual: str) -> ComparisonResult:
+        """LLM语义匹配"""
+        if self.llm_client is None:
+            return ComparisonResult(
+                is_match=False,
+                similarity_score=0.0,
+                comparison_type=ComparisonType.LLM,
+                expected=expected,
+                actual=actual,
+                error_message="LLM客户端未配置"
+            )
+        
+        try:
+            # 构建LLM评估提示
+            prompt = f"""请评估以下两个文本的语义相似度，并给出0-100的分数。
+
+期望文本：
+{expected}
+
+实际文本：
+{actual}
+
+请按以下JSON格式回复：
+{{
+    "similarity_score": <0-100的数字>,
+    "reasoning": "<评估理由>"
+}}
+
+评估标准：
+- 90-100分：语义完全一致或高度相似
+- 70-89分：语义基本一致，有轻微差异
+- 50-69分：语义部分相似，有明显差异
+- 30-49分：语义有一定关联，但差异较大
+- 0-29分：语义不相关或完全不同
+
+请只返回JSON格式的结果，不要包含其他内容。"""
+            
+            # 调用LLM进行评估
+            response = self.llm_client.generate(prompt)
+            
+            if response.error:
+                return ComparisonResult(
+                    is_match=False,
+                    similarity_score=0.0,
+                    comparison_type=ComparisonType.LLM,
+                    expected=expected,
+                    actual=actual,
+                    error_message=f"LLM调用错误: {response.error}"
+                )
+            
+            # 解析LLM响应
+            try:
+                # 提取JSON内容
+                llm_result_text = self._extract_json_from_markdown(response.content)
+                llm_result = json.loads(llm_result_text)
+                
+                similarity_score = float(llm_result.get('similarity_score', 0)) / 100.0
+                reasoning = llm_result.get('reasoning', '')
+                
+                # 始终根据用户设置的阈值进行最终判断，不依赖LLM的is_match
+                is_match = similarity_score >= self.fuzzy_threshold
+                
+                details = {
+                    'llm_model': response.model,
+                    'llm_reasoning': reasoning,
+                    'llm_raw_score': llm_result.get('similarity_score', 0),
+                    'llm_response_time': response.response_time,
+                    'threshold': self.fuzzy_threshold
+                }
+                
+                return ComparisonResult(
+                    is_match=is_match,
+                    similarity_score=similarity_score,
+                    comparison_type=ComparisonType.LLM,
+                    expected=expected,
+                    actual=actual,
+                    details=details
+                )
+                
+            except (json.JSONDecodeError, KeyError, ValueError) as e:
+                return ComparisonResult(
+                    is_match=False,
+                    similarity_score=0.0,
+                    comparison_type=ComparisonType.LLM,
+                    expected=expected,
+                    actual=actual,
+                    error_message=f"LLM响应解析错误: {e}，原始响应: {response.content}"
+                )
+                
+        except Exception as e:
+            logger.error(f"LLM匹配过程中发生错误: {e}")
+            return ComparisonResult(
+                is_match=False,
+                similarity_score=0.0,
+                comparison_type=ComparisonType.LLM,
+                expected=expected,
+                actual=actual,
+                error_message=str(e)
+            )
+    
     def compare(self, 
                 expected: str, 
                 actual: str, 
@@ -235,6 +388,8 @@ class TextComparator:
                 result = self.contains_match(extracted_expected, extracted_actual)
             elif comparison_type == ComparisonType.JSON:
                 result = self.json_match(extracted_expected, extracted_actual)
+            elif comparison_type == ComparisonType.LLM:
+                result = self.llm_match(extracted_expected, extracted_actual)
             else:
                 raise ValueError(f"不支持的对比类型: {comparison_type}")
             
