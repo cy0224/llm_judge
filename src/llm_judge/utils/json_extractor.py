@@ -185,7 +185,7 @@ class JSONExtractor:
         if self.log_extraction_failures:
             logger.warning(error_msg)
         
-        if self.extraction_failure_mode == "error":
+        if self.extraction_failure_mode == "strict":
             raise ValueError(error_msg)
         elif self.extraction_failure_mode == "empty":
             return ""

@@ -20,7 +20,6 @@ class ComparisonType(Enum):
     CONTAINS = "contains"  # 包含匹配
     JSON = "json"  # JSON结构匹配
     LLM = "llm"  # LLM语义匹配
-    CUSTOM = "custom"  # 自定义匹配
 
 
 @dataclass
@@ -48,7 +47,17 @@ class TextComparator:
         self.fuzzy_threshold = fuzzy_threshold
         self.ignore_case = ignore_case
         self.ignore_whitespace = ignore_whitespace
-        self.json_extractor = json_extractor or JSONExtractor()
+        
+        # 如果没有提供json_extractor，从配置创建一个
+        if json_extractor is None:
+            extraction_failure_mode = config.get('extensions.json_extraction.extraction_failure_mode', 'ignore')
+            log_extraction_failures = config.get('extensions.json_extraction.log_extraction_failures', True)
+            json_extractor = JSONExtractor(
+                extraction_failure_mode=extraction_failure_mode,
+                log_extraction_failures=log_extraction_failures
+            )
+        
+        self.json_extractor = json_extractor
         self.llm_client = llm_client
     
     @classmethod
@@ -70,6 +79,16 @@ class TextComparator:
         
         if not api_key:
             logger.warning(f"未找到{provider.upper()}_API_KEY，LLM比较功能将不可用")
+            
+            # 如果没有提供json_extractor，从配置创建一个
+            if json_extractor is None:
+                extraction_failure_mode = config.get('extensions.json_extraction.extraction_failure_mode', 'ignore')
+                log_extraction_failures = config.get('extensions.json_extraction.log_extraction_failures', True)
+                json_extractor = JSONExtractor(
+                    extraction_failure_mode=extraction_failure_mode,
+                    log_extraction_failures=log_extraction_failures
+                )
+            
             return cls(
                 fuzzy_threshold=fuzzy_threshold or 0.8,
                 ignore_case=ignore_case,
@@ -90,6 +109,15 @@ class TextComparator:
             max_retries=config.get(f'test.comparison.llm.{provider}.max_retries', 2),
             retry_delay=config.get(f'test.comparison.llm.{provider}.retry_delay', 1)
         )
+        
+        # 如果没有提供json_extractor，从配置创建一个
+        if json_extractor is None:
+            extraction_failure_mode = config.get('extensions.json_extraction.extraction_failure_mode', 'ignore')
+            log_extraction_failures = config.get('extensions.json_extraction.log_extraction_failures', True)
+            json_extractor = JSONExtractor(
+                extraction_failure_mode=extraction_failure_mode,
+                log_extraction_failures=log_extraction_failures
+            )
         
         return cls(
             fuzzy_threshold=fuzzy_threshold or 0.8,

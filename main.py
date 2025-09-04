@@ -176,11 +176,11 @@ def run_llm_test(excel_file: str,
 
 
 def run_http_test(excel_file: str,
-                  output_dir: str = "output",
-                  parallel: int = 1,
-                  comparison_type: str = "fuzzy",
-                  threshold: float = 0.8,
-                  timeout: int = 30) -> bool:
+                  output_dir: str = None,
+                  parallel: int = None,
+                  comparison_type: str = None,
+                  threshold: float = None,
+                  timeout: int = None) -> bool:
     """运行HTTP测试
     
     Args:
@@ -194,7 +194,15 @@ def run_http_test(excel_file: str,
     Returns:
         bool: 测试是否全部通过
     """
+    # 参数优先级处理：函数参数 > 配置文件 > 默认值
+    output_dir = output_dir or config.get('test.output_dir', 'output')
+    parallel = parallel if parallel is not None else config.get('test.parallel.max_workers', 1)
+    comparison_type = comparison_type or config.get('test.comparison.default_type', 'fuzzy')
+    threshold = threshold if threshold is not None else 0.8
+    timeout = timeout if timeout is not None else config.get('http.timeout', 30)
+    
     logger.info(f"开始HTTP测试: {excel_file}")
+    logger.info(f"参数配置 - output_dir: {output_dir}, parallel: {parallel}, comparison_type: {comparison_type}, threshold: {threshold}, timeout: {timeout}")
     
     try:
         # 创建带时间戳的输出目录
@@ -298,8 +306,8 @@ def run_http_test(excel_file: str,
 
 
 def run_batch_tests(data_dir: str,
-                   test_type: str = "both",
-                   output_dir: str = "output",
+                   test_type: str = None,
+                   output_dir: str = None,
                    **kwargs) -> bool:
     """批量运行测试
     
@@ -312,7 +320,12 @@ def run_batch_tests(data_dir: str,
     Returns:
         bool: 所有测试是否通过
     """
+    # 参数优先级处理：函数参数 > 配置文件 > 默认值
+    test_type = test_type or "both"
+    output_dir = output_dir or config.get('test.output_dir', 'output')
+    
     logger.info(f"开始批量测试: {data_dir}")
+    logger.info(f"参数配置 - test_type: {test_type}, output_dir: {output_dir}")
     
     try:
         batch_reader = BatchExcelReader(data_dir)

@@ -9,17 +9,18 @@ JSON内容提取功能允许您在LLM和HTTP测试中指定JSONPath表达式，�
 ### 1. 全局配置 (config.yaml)
 
 ```yaml
-json_extraction:
-  enabled: true                    # 启用JSON提取功能
-  default_extract_path: "$"        # 默认提取路径（根节点）
-  extraction_failure_mode: "ignore" # 提取失败处理模式
-  log_extraction_failures: true    # 是否记录提取失败日志
+extensions:
+  json_extraction:
+    enabled: true                    # 启用JSON提取功能
+    default_extract_path: "$"        # 默认提取路径（根节点）
+    extraction_failure_mode: "empty" # 提取失败处理模式
+    log_extraction_failures: true    # 是否记录提取失败日志
 ```
 
 **提取失败处理模式说明：**
-- `ignore`: 提取失败时返回原始内容（推荐）
-- `error`: 提取失败时抛出异常
-- `empty`: 提取失败时返回空字符串
+- `ignore`: 提取失败时返回原始内容
+- `empty`: 提取失败时返回空字符串（推荐）
+- `strict`: 提取失败时抛出异常
 
 ### 2. Excel列配置
 

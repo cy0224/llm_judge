@@ -10,6 +10,16 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 from loguru import logger
 
+# 导入配置
+try:
+    from ..config import config
+except ImportError:
+    # 如果无法导入配置，使用空配置
+    class MockConfig:
+        def get(self, key, default=None):
+            return default
+    config = MockConfig()
+
 
 @dataclass
 class HTTPResponse:
@@ -29,12 +39,24 @@ class HTTPClient:
     
     def __init__(self, 
                  base_url: str = None,
-                 timeout: int = 30,
-                 max_retries: int = 3,
-                 retry_backoff_factor: float = 0.3,
+                 timeout: int = None,
+                 max_retries: int = None,
+                 retry_backoff_factor: float = None,
                  headers: Dict[str, str] = None,
                  auth: tuple = None,
-                 verify_ssl: bool = True):
+                 verify_ssl: bool = None):
+        # 参数优先级处理：构造函数参数 > 配置文件 > 默认值
+        timeout = timeout if timeout is not None else config.get('http.timeout', 30)
+        max_retries = max_retries if max_retries is not None else config.get('http.max_retries', 3)
+        retry_backoff_factor = retry_backoff_factor if retry_backoff_factor is not None else config.get('http.retry_delay', 0.3)
+        verify_ssl = verify_ssl if verify_ssl is not None else config.get('http.verify_ssl', True)
+        
+        # 从配置文件获取默认headers
+        config_headers = config.get('http.headers', {})
+        if isinstance(config_headers, dict):
+            if headers:
+                config_headers.update(headers)
+            headers = config_headers
         self.base_url = base_url
         self.timeout = timeout
         self.session = requests.Session()

@@ -93,10 +93,10 @@ class TestJSONExtractor:
         result = self.extractor.extract(self.test_json_str, "$.nonexistent")
         assert result == self.test_json_str
         
-        # error模式：抛出异常
-        extractor_error = JSONExtractor(extraction_failure_mode="error")
+        # strict模式：抛出异常
+        extractor_strict = JSONExtractor(extraction_failure_mode="strict")
         with pytest.raises(ValueError):
-            extractor_error.extract(self.test_json_str, "$.nonexistent")
+            extractor_strict.extract(self.test_json_str, "$.nonexistent")
         
         # empty模式：返回空字符串
         extractor_empty = JSONExtractor(extraction_failure_mode="empty")
@@ -111,10 +111,10 @@ class TestJSONExtractor:
         result = self.extractor.extract(invalid_json, "$.name")
         assert result == invalid_json
         
-        # error模式：抛出异常
-        extractor_error = JSONExtractor(extraction_failure_mode="error")
+        # strict模式：抛出异常
+        extractor_strict = JSONExtractor(extraction_failure_mode="strict")
         with pytest.raises(ValueError):
-            extractor_error.extract(invalid_json, "$.name")
+            extractor_strict.extract(invalid_json, "$.name")
     
     def test_validate_path(self):
         """测试路径验证"""

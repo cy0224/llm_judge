@@ -17,7 +17,7 @@ llm:
 
 # HTTP测试配置
 http:
-  timeout: 30
+  timeout: 60
   max_retries: 3
   retry_delay: 1
   verify_ssl: true
@@ -129,14 +129,7 @@ environment:
 
 # 扩展配置
 extensions:
-  # 自定义比较器
-  custom_comparators: []
-  
-  # 自定义报告生成器
-  custom_reporters: []
-  
-  # 插件目录
-  plugin_dirs: []
+
   
   # JSON内容提取配置
   json_extraction:
@@ -148,9 +141,9 @@ extensions:
     
     # 提取失败时的处理方式
     # "ignore" - 忽略提取失败，使用原始内容
-    # "error" - 提取失败时报错
+    # "strict" - 提取失败时报错
     # "empty" - 提取失败时返回空字符串
-    extraction_failure_mode: "ignore"
+    extraction_failure_mode: "empty"
     
     # 是否在提取失败时记录警告日志
     log_extraction_failures: true

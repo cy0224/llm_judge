@@ -50,19 +50,39 @@ pip install -r requirements.txt
 # OpenAI API密钥
 export OPENAI_API_KEY="your-openai-api-key"
 export OPENAI_BASE_URL="base-url"
-
 ```
 
-### 3. 运行测试
+### 3. 命令行使用
+
+#### 全局参数
+
+| 参数名 | 默认值 | 说明 |
+|--------|--------|---------|
+| --log-level | "INFO" | 日志级别 (DEBUG, INFO, WARNING, ERROR) |
+| --output-dir | "output" | 输出目录路径 |
+| --parallel | 1 | 并行执行的进程数 |
+| --comparison-type | "fuzzy" | 比较类型 (exact, fuzzy, contains, json, llm) |
+| --threshold | 0.8 | 模糊匹配阈值 (0.0-1.0) |
 
 #### LLM测试
 
 ```bash
-# 使用示例数据运行LLM测试
-python main.py llm --file data/llm_test_example.xlsx --provider openai --model gpt-3.5-turbo
+python main.py llm [OPTIONS]
+```
 
-# 使用不同的比较方式
-python main.py --comparison-type fuzzy --threshold 0.8 llm --file data/llm_test_example.xlsx
+| 参数名 | 默认值 | 说明 |
+|--------|--------|---------|
+| --file | 必需 | 测试数据文件路径 |
+| --provider | "openai" | LLM提供商 |
+| --model | 配置文件中的默认模型 | 使用的模型名称 |
+
+**使用示例：**
+```bash
+# 基础LLM测试
+python main.py llm --file data/llm_test_example.xlsx
+
+# 指定模型和提供商
+python main.py llm --file data/llm_test_example.xlsx --provider openai --model gpt-4
 
 # 使用LLM语义比较（推荐用于语义相似性评估）
 python main.py --comparison-type llm --threshold 0.8 llm --file data/llm_test_example.xlsx
@@ -71,15 +91,47 @@ python main.py --comparison-type llm --threshold 0.8 llm --file data/llm_test_ex
 #### HTTP测试
 
 ```bash
-# 运行HTTP接口测试
-python main.py http --file data/http_test_example.xlsx --timeout 30
+python main.py http [OPTIONS]
+```
+
+| 参数名 | 默认值 | 说明 |
+|--------|--------|---------|
+| --file | 必需 | 测试数据文件路径 |
+| --timeout | 30 | 请求超时时间（秒） |
+
+**使用示例：**
+```bash
+# 基础HTTP测试
+python main.py http --file data/http_test_example.xlsx
+
+# 自定义超时时间
+python main.py http --file data/http_test_example.xlsx --timeout 60
 ```
 
 #### 批量测试
 
 ```bash
+python main.py batch [OPTIONS]
+```
+
+| 参数名 | 默认值 | 说明 |
+|--------|--------|---------|
+| --dir | 必需 | 测试数据目录路径 |
+| --type | "both" | 测试类型 (llm, http, both) |
+| --provider | "openai" | LLM提供商 |
+| --model | 配置文件中的默认模型 | 使用的模型名称 |
+| --timeout | 30 | HTTP请求超时时间（秒） |
+
+**使用示例：**
+```bash
 # 批量运行所有测试
-python main.py --parallel 4 batch --dir data/ --type both
+python main.py batch --dir data/ --type both --parallel 4
+
+# 只运行LLM测试
+python main.py batch --dir data/ --type llm --provider openai --model gpt-4
+
+# 自定义输出目录和日志级别
+python main.py --log-level DEBUG --output-dir results batch --dir data/
 ```
 
 ## 测试数据格式
@@ -131,7 +183,8 @@ test:
     enabled: true
     default_expected_path: "$"
     default_actual_path: "$"
-    error_handling: "ignore"  # ignore, strict
+    extraction_failure_mode: "empty"  # ignore, empty, strict
+    log_extraction_failures: true
 ```
 
 ## 比较方式说明
@@ -174,6 +227,7 @@ test:
 ### 错误处理
 
 - **ignore模式**: 提取失败时使用原始内容进行比较
+- **empty模式**: 提取失败时返回空字符串进行比较（推荐）
 - **strict模式**: 提取失败时测试标记为失败
 
 详细使用说明请参考 [JSON_EXTRACTION_USAGE.md](JSON_EXTRACTION_USAGE.md)
@@ -232,70 +286,50 @@ test:
 - **JSON报告**: 机器可读的结构化数据
 - **Excel报告**: 表格形式的测试结果，包含所有测试详情和比较信息（需要安装pandas和openpyxl）
 
-## 命令行参数
+## 高级配置
 
-### 全局参数
+## 高级示例
 
-- `--log-level`: 日志级别 (DEBUG, INFO, WARNING, ERROR)
-- `--output-dir`: 输出目录
-- `--parallel`: 并行数量
-- `--comparison-type`: 比较类型 (exact, fuzzy, contains, json, llm)
-- `--threshold`: 相似度阈值
-
-### LLM测试参数
-
-- `--file`: Excel测试数据文件
-- `--provider`: LLM提供商 (openai)
-- `--model`: 模型名称
-
-### HTTP测试参数
-
-- `--file`: Excel测试数据文件
-- `--timeout`: 请求超时时间
-
-### 批量测试参数
-
-- `--dir`: 测试数据目录
-- `--type`: 测试类型 (llm, http, both)
-
-## 示例用法
-
-### 1. 基础LLM测试
+### 1. 复杂LLM测试配置
 
 ```bash
 python main.py \
   --parallel 2 \
   --comparison-type fuzzy \
   --threshold 0.8 \
+  --output-dir custom_results/ \
   llm \
   --file data/llm_test_example.xlsx \
   --provider openai \
-  --model gpt-3.5-turbo
+  --model gpt-4
 ```
 
-### 2. HTTP接口测试
+### 2. 高并发HTTP接口测试
 
 ```bash
 python main.py \
   --parallel 4 \
   --comparison-type contains \
+  --log-level DEBUG \
   http \
   --file data/http_test_example.xlsx \
-  --timeout 30
+  --timeout 60
 ```
 
-### 3. 批量测试
+### 3. 生产环境批量测试
 
 ```bash
 python main.py \
-  --parallel 3 \
-  --output-dir results/ \
+  --parallel 8 \
+  --output-dir production_results/ \
+  --comparison-type llm \
+  --threshold 0.85 \
   batch \
   --dir data/ \
   --type both \
   --provider openai \
   --model gpt-4 \
-  --timeout 60
+  --timeout 120
 ```
 
 ## 开发指南
@@ -354,6 +388,12 @@ MIT License
 欢迎提交Issue和Pull Request来改进这个项目！
 
 ## 更新日志
+
+### v1.2.1
+- 🐛 修复TextComparator类未正确读取配置文件中extraction_failure_mode参数的问题
+- 🔧 修正配置路径错误，确保extensions.json_extraction.extraction_failure_mode配置正确生效
+- 📚 更新文档，修正JSON提取配置说明中的路径和选项错误
+- ✅ 验证empty模式在提取失败时正确返回空字符串
 
 ### v1.2.0
 - 🔧 修复HTTP测试中LLM比较功能的配置问题
